@@ -24,11 +24,11 @@ if (isset($_GET['mode'])) {
             $card = $_GET['card'];
 
             // Check if already present
-            $check = $database->prepare("SELECT * FROM attendance WHERE StudentID = ? AND DATE(EntryTime) = ?");
+            $check = $database->prepare("SELECT StudentID FROM attendance WHERE StudentID = ? AND DATE(EntryTime) = ?");
             $check->bind_param("ss", $card, date('Y-m-d'));
             $check->execute();
-            $result = $check->get_result();
-            if ($result->num_rows > 0) {
+            $check->bind_result($result_student_id);
+            if ($check->fetch()) {
                 echo $card . " is already present";
             } else {
                 // Create SQL script to insert card to table

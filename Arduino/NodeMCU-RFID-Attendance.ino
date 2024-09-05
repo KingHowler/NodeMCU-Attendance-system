@@ -82,7 +82,7 @@ void MarkPresent(String Card) {
   }
   Serial.println(" - Connected to host");
 
-  String url = "/markAttendance.php?mode=mark-attendance&card=" + Card;
+  String url = "/write.php?mode=mark-attendance&card=" + Card;
   Serial.println(url);
 
   // Send GET request
