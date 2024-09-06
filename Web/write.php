@@ -11,84 +11,86 @@ if ($database->connect_error) {
     die("Connection failed: " . $database->connect_error);
 }
 
-// Check for mode parameter
-if (isset($_GET['mode'])) {
-    // Get mode parameter
-    $mode = $_GET['mode'];
+$mode = isset($_GET['mode']) ? filter_input(INPUT_GET, 'mode', FILTER_SANITIZE_STRING) : null;
+$card = isset($_GET['card']) ? filter_input(INPUT_GET, 'card', FILTER_SANITIZE_STRING) : null;
+$name = isset($_GET['name']) ? filter_input(INPUT_GET, 'name', FILTER_SANITIZE_STRING) : null;
+$cardHolder;
+$time;
 
-    // Run code based on mode
-    if ($mode == "mark-attendance") {
-        // Check for attendance parameters
-        if (isset($_GET['card'])) {
-            // Store card value
-            $card = $_GET['card'];
-
-            // Check if already present
-            $check = $database->prepare("SELECT StudentID FROM attendance WHERE StudentID = ? AND DATE(EntryTime) = ?");
-            $check->bind_param("ss", $card, date('Y-m-d'));
-            $check->execute();
-            $check->bind_result($result_student_id);
-            if ($check->fetch()) {
-                echo $card . " is already present";
-            } else {
-                // Create SQL script to insert card to table
-                $sqlScript = $database->prepare("INSERT INTO attendance (StudentID) VALUES (?)");
-                $sqlScript->bind_param("s", $card);
-
-                // Execute SQL script
-                if ($sqlScript->execute()) {
-                    echo "Marked " . $card . " as present";
-                } else {
-                    echo "Error: " . $stmt->error;
-                }
-
-                // begin closing
-                $sqlScript->close();
-            }
-            $check->close();
-        } else {
-            echo "unable to find card";
-        }
-    } elseif ($mode == "new-card") {
-        // Check for parameters
-        if (isset($_GET['card']) && isset($_GET['name'])) {
-            // store parameters
-            $card = $_GET['card'];
-            $name = $_GET['name'];
-
-            // Check if already present
-            $check = $database->prepare("SELECT * FROM students WHERE StudentID = ?");
-            $check->bind_param("s", $card);
-            $check->execute();
-            $result = $check->get_result();
-            if ($result->num_rows > 0) {
-                echo $card . " is already present";
-            } else {
-                // Create SQL script to insert card to table
-                $sqlScript = $database->prepare("INSERT INTO students (StudentID, StudentName) VALUES (?, ?)");
-                $sqlScript->bind_param("ss", $card, $name);
-
-                // Execute SQL script
-                if ($sqlScript->execute()) {
-                    echo "Added " . $card . " as ID for " . $name;
-                } else {
-                    echo "Error: " . $sqlScript->error;
-                }
-
-                // begin closing
-                $sqlScript->close();
-            }
-            $check->close();
-        } else {
-            echo "unable to identify name or ID";
-        }
+function RecognizeCard($cardID) {
+    $findCard = $GLOBALS['database']->prepare("SELECT StudentName FROM students WHERE StudentID = ?");
+    $findCard->bind_param("s", $cardID);
+    $findCard->execute();
+    $findCard->bind_result($GLOBALS['cardHolder']);
+    if ($findCard->fetch()) {
+        echo $cardID . " belongs to " . $GLOBALS['cardHolder'] . "\n";
+        $success = true;
     } else {
-        echo "unable to identify mode";
+        echo $cardID . " is not recognized" . "\n";
+        $success = false;
     }
-} else {
-    echo "mode not found";
+    $findCard->close();
+    return $success;
 }
 
-// close the connection
-$database->close();
+function RegisterCard($cardID, $cardHolder) {
+    $registerCard = $GLOBALS['database']->prepare("INSERT INTO students (StudentID, StudentName) VALUES (?, ?)");
+    $registerCard->bind_param("ss", $cardID, $cardHolder);
+    if ($registerCard->execute()) {
+        echo "Added " . $cardID . " as ID for " . $cardHolder . "\n";
+    } else {
+        echo "Error: " . $registerCard->error . "\n";
+    }
+    $registerCard->close();
+}
+
+function CheckPresent($cardID) {
+    $check = $GLOBALS['database']->prepare("SELECT EntryTime FROM attendance WHERE StudentID = ? AND DATE(EntryTime) = ?");
+    $check->bind_param("ss", $cardID, date('Y-m-d'));
+    $check->execute();
+    $check->bind_result($GLOBALS['time']);
+    if ($check->fetch()) {
+        echo $cardID . " was present at " . $GLOBALS['time'] . "\n";
+        $success = true;
+    } else {
+        $success = false;
+    }
+    $check->close();
+    return $success;
+}
+
+function MarkPresent($cardID) {
+    $markPresent = $GLOBALS['database']->prepare("INSERT INTO attendance (StudentID) VALUES (?)");
+    $markPresent->bind_param("s", $cardID);
+    if ($markPresent->execute()) {
+        echo "Marked " . $cardID . " as present" . "\n";
+    } else {
+        echo "Error: " . $markPresent->error . "\n";
+    }
+    $markPresent->close();
+}
+
+switch($GLOBALS['mode']) {
+    case 'mark-attendance':
+        if ($GLOBALS['card']) {
+            if (RecognizeCard($GLOBALS['card']) && !CheckPresent($GLOBALS['card'])) {
+                MarkPresent($GLOBALS['card']);
+            }
+        } else {
+            echo "Invalid Card" . "\n";
+        }
+    break;
+
+    case 'new-card':
+        if ($GLOBALS['card'] && $GLOBALS['name']) {
+            if (!RecognizeCard($GLOBALS['card'])) {
+                RegisterCard($GLOBALS['card'], $GLOBALS['name']);
+            }
+        }
+    break;
+
+    default :
+        echo "Invalid Mode" . "\n";
+    break;
+}
 ?>
