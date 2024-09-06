@@ -60,8 +60,9 @@ function CheckPresent($cardID) {
 }
 
 function MarkPresent($cardID) {
-    $markPresent = $GLOBALS['database']->prepare("INSERT INTO attendance (StudentID) VALUES (?)");
-    $markPresent->bind_param("s", $cardID);
+    date_default_timezone_set("Asia/Karachi");
+    $markPresent = $GLOBALS['database']->prepare("INSERT INTO attendance (EntryDate, EntryTime, StudentID) VALUES (?, ?, ?)");
+    $markPresent->bind_param("sss", date("Y-m-d"), date("H:i"), $cardID);
     if ($markPresent->execute()) {
         echo "Marked " . $cardID . " as present" . "\n";
     } else {
