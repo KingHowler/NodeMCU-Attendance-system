@@ -6,10 +6,14 @@
 #define RST_PIN D3 // Reset pin
 MFRC522 mfrc522(SS_PIN, RST_PIN);  // Create MFRC522 instance
 
-const char* ssid = "Guest";        // Replace with your Wi-Fi SSID
-const char* password = "thePortal"; // Replace with your Wi-Fi password
+const char* ssid = "myWifi";        // Replace with your Wi-Fi SSID
+const char* password = "myPassword"; // Replace with your Wi-Fi password
 
-const char* host = "esp-test.atwebpages.com";   // Replace with your server address
+const char* host = "my-server.com";   // Replace with your server address
+
+#define RedLight D0
+#define YellowLight D1
+#define GreenLight D2
 
 void setup() {
   Serial.begin(115200);
@@ -74,22 +78,25 @@ void loop() {
   Serial.print("UID tag: ");
   Serial.println(UIDtag);
   String resp = MarkPresent(uidString);
-  if (resp == ("\n" + UIDtag + " is not recognized\n")) {
-    digitalWrite(D0, HIGH);
+  resp = resp.substring(resp.length() - 2);
+
+  if (resp == "NF") {
+    Serial.println("Card not found");
+    digitalWrite(RedLight, HIGH);
   }
-  String filter1 = resp.substring(5, resp.length() - 5);
-  String filter21 = resp.substring(filter1.indexOf('\n') + 6, resp.length());
-  String filter22 = resp.substring(filter1.indexOf('\n') + 6, resp.length() - 13);
-  if (filter21 == ("Marked " + UIDtag + " as present\n")) {
-    digitalWrite(D2, HIGH);
+  if (resp == "AP") {
+    Serial.println("Already marked as Present");
+    digitalWrite(YellowLight, HIGH);
   }
-  if (filter22 == (UIDtag + " was present")) {
-    digitalWrite(D1, HIGH);
+  
+  if (resp == "MP") {
+    Serial.println("Marked as Present");
+    digitalWrite(GreenLight, HIGH);
   }
   delay(3000);
-  digitalWrite(D0, LOW);
-  digitalWrite(D1, LOW);
-  digitalWrite(D2, LOW);
+  digitalWrite(RedLight), LOW);
+  digitalWrite(YeklowLight, LOW);
+  digitalWrite(GreenLight, LOW);
 
   
   

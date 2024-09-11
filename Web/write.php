@@ -1,9 +1,9 @@
 <?php
 // Configure Database
-$server = "fdb1034.awardspace.net";
-$user   = "3956771_attendancesys";
-$pass   = "ATsys20513";
-$dbName = "3956771_attendancesys";
+$server = "sqlserver.com";
+$user   = "myUsername";
+$pass   = "myPassword";
+$dbName = "myDatabase";
 
 // Connect to database
 $database = new mysqli($server, $user, $pass, $dbName);
@@ -26,7 +26,7 @@ function RecognizeCard($cardID) {
         echo $cardID . " belongs to " . $GLOBALS['cardHolder'] . "\n";
         $success = true;
     } else {
-        echo $cardID . " is not recognized" . "\n";
+        echo $cardID . " is not recognized" . "\n" . "NF";
         $success = false;
     }
     $findCard->close();
@@ -45,12 +45,12 @@ function RegisterCard($cardID, $cardHolder) {
 }
 
 function CheckPresent($cardID) {
-    $check = $GLOBALS['database']->prepare("SELECT EntryTime FROM attendance WHERE StudentID = ? AND DATE(EntryTime) = ?");
+    $check = $GLOBALS['database']->prepare("SELECT EntryTime FROM attendance WHERE StudentID = ? AND  DATE(EntryDate) = ?");
     $check->bind_param("ss", $cardID, date('Y-m-d'));
     $check->execute();
     $check->bind_result($GLOBALS['time']);
     if ($check->fetch()) {
-        echo $cardID . " was present at " . $GLOBALS['time'] . "\n";
+        echo $cardID . " was present at " . $GLOBALS['time'] . "\n" . "AP";
         $success = true;
     } else {
         $success = false;
@@ -60,16 +60,18 @@ function CheckPresent($cardID) {
 }
 
 function MarkPresent($cardID) {
-    date_default_timezone_set("Asia/Karachi");
     $markPresent = $GLOBALS['database']->prepare("INSERT INTO attendance (EntryDate, EntryTime, StudentID) VALUES (?, ?, ?)");
     $markPresent->bind_param("sss", date("Y-m-d"), date("H:i"), $cardID);
     if ($markPresent->execute()) {
-        echo "Marked " . $cardID . " as present" . "\n";
+        echo "Marked " . $cardID . " as present" . "\n" . "MP";
     } else {
         echo "Error: " . $markPresent->error . "\n";
     }
     $markPresent->close();
 }
+
+
+date_default_timezone_set("Asia/Karachi");
 
 switch($GLOBALS['mode']) {
     case 'mark-attendance':
