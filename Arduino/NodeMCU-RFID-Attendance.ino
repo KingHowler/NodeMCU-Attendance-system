@@ -6,6 +6,7 @@
 #define RST_PIN D3 // Reset pin
 MFRC522 mfrc522(SS_PIN, RST_PIN);  // Create MFRC522 instance
 
+WiFiClient client;
 const char* ssid = "myWifi";        // Replace with your Wi-Fi SSID
 const char* password = "myPassword"; // Replace with your Wi-Fi password
 
@@ -14,6 +15,8 @@ const char* host = "my-server.com";   // Replace with your server address
 #define RedLight D0
 #define YellowLight D1
 #define GreenLight D2
+
+bool newData;
 
 void setup() {
   Serial.begin(115200);
@@ -33,7 +36,6 @@ void setup() {
     return;
   }
   Serial.println("\nConnected to Wi-Fi");
-
   
   SPI.begin();           // Initialize SPI bus
   mfrc522.PCD_Init();    // Initialize MFRC522
@@ -44,6 +46,38 @@ void setup() {
 }
 
 void loop() {
+  newData = false;
+  String resp;
+  while (client.available()) {
+    newData = true;
+    resp = client.readStringUntil('\r');
+  }
+  if (newData == true) {
+    // Close the connection
+    client.stop();
+    Serial.println("data detected");
+  }
+  resp = resp.substring(resp.length() - 2);
+  if (resp == "NF") {
+    Serial.println("Card not found");
+    digitalWrite(RedLight, HIGH);
+    digitalWrite(YellowLight, LOW);
+    digitalWrite(GreenLight, LOW);
+  }
+  if (resp == "AP") {
+    Serial.println("Already marked as Present");
+    digitalWrite(RedLight, LOW);
+    digitalWrite(YellowLight, HIGH);
+    digitalWrite(GreenLight, LOW);
+  }
+  
+  if (resp == "MP") {
+    Serial.println("Marked as Present");
+    digitalWrite(RedLight, LOW);
+    digitalWrite(YellowLight, LOW);
+    digitalWrite(GreenLight, HIGH);
+  }
+
   // Look for new cards
   if (!mfrc522.PICC_IsNewCardPresent()) {
     return;
@@ -53,7 +87,6 @@ void loop() {
   if (!mfrc522.PICC_ReadCardSerial()) {
     return;
   }
-
   // Store the UID in a string in the format FF FF FF FF
   String uidString = "";
   String UIDtag = "";
@@ -77,36 +110,14 @@ void loop() {
   // Print the UID string to Serial
   Serial.print("UID tag: ");
   Serial.println(UIDtag);
-  String resp = MarkPresent(uidString);
-  resp = resp.substring(resp.length() - 2);
+  MarkPresent(uidString);
 
-  if (resp == "NF") {
-    Serial.println("Card not found");
-    digitalWrite(RedLight, HIGH);
-  }
-  if (resp == "AP") {
-    Serial.println("Already marked as Present");
-    digitalWrite(YellowLight, HIGH);
-  }
-  
-  if (resp == "MP") {
-    Serial.println("Marked as Present");
-    digitalWrite(GreenLight, HIGH);
-  }
-  delay(3000);
-  digitalWrite(RedLight), LOW);
-  digitalWrite(YeklowLight, LOW);
-  digitalWrite(GreenLight, LOW);
-
-  
-  
   // Halt PICC to stop reading
   mfrc522.PICC_HaltA();
 }
 
-String MarkPresent(String Card) {
+void MarkPresent(String Card) {
   // Connect to the server
-  WiFiClient client;
   Serial.print("Connecting to ");
   Serial.print(host);
   if (!client.connect(host, 80)) { // Connect to server on port 80
@@ -120,20 +131,4 @@ String MarkPresent(String Card) {
   client.print(String("GET ") + url + " HTTP/1.1\r\n" +
               "Host: " + host + "\r\n" +
               "Connection: close\r\n\r\n");
-
-  // Wait for response
-  delay(3000); // Adjust the delay as needed
-
-  String response;
-  // Read and print the response (optional)
-  while (client.available()) {
-    response = client.readStringUntil('\r');
-  }
-  Serial.println(response);
-
-  // Close the connection
-  client.stop();
-  Serial.println("Connection closed \n\n\n");
-
-  return response;
 }
